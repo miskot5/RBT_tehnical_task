@@ -25,6 +25,7 @@ class Location(db.Model):
         self.city = city
         self.part_of_city = part_of_city
 
+
 class TypeOfRealEstate(db.Model):
     __tablename__ = "type_of_real_estate"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -35,14 +36,15 @@ class TypeOfRealEstate(db.Model):
         self.name = name
         self.category = category
 
+
 class RealEstate(db.Model):
     __tablename__ = 'real_estate'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     type_id = db.Column(db.Integer, db.ForeignKey('type_of_real_estate.id'))
-    type = db.relationship('TypeOfRealEstate', backref = db.backref('real_estate', lazy=False))
+    type = db.relationship('TypeOfRealEstate', backref = db.backref('real_estate', lazy='joined'))
     offer = db.Column(db.String(256))
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'))
-    location = db.relationship('Location', backref = db.backref('real_estate', lazy=True))
+    location = db.relationship('Location', backref = db.backref('real_estate', lazy='joined'))
     square_meter = db.Column(db.Integer)
     year = db.Column(db.Integer)
     area = db.Column(db.Integer)
@@ -72,6 +74,27 @@ class RealEstate(db.Model):
         self.parking = parking
         self.elevator = elevator
         self.other = other
+
+    def __json__(self):
+        return {
+            "type_id": self.type_id,
+            "location_id": self.location_id,
+            "type_name": self.type.name,
+            "location": self.location.city + ',' + self.location.part_of_city,
+            "spm": self.square_meter,
+            "year": self.year,
+            "area": self.area,
+            "storey": self.storey,
+            "num_of_floors": self.num_of_floors,
+            "registration": self.registration,
+            "heating_type": self.heating_type,
+            "num_of_rooms": self.num_of_rooms,
+            "num_of_toilets": self.num_of_toilets,
+            "parking": self.parking,
+            "elevator": self.elevator,
+            "other": self.other
+        }
+
 
 @app.route('/crawl', methods=['POST'])
 def crawl():
@@ -176,6 +199,16 @@ def crawl():
     return {"Broj dodatih lokacija" : count_location,
             "Broj dodatih tipova nekretnina" : count_types_of_real_estate,
             "Broj dodatih nekretnina" : count_real_estate}
+
+
+@app.route('/real_estate/<int:id>', methods = ['GET'])
+def get_real_estate_by_id(id):
+    real_estate = db.session.query(RealEstate).filter_by(id=id).first()
+
+    if not real_estate:
+        return jsonify({'error': 'Real estate not found'}), 404
+    return jsonify(real_estate.__json__())
+
 
 
 if __name__ == '__main__':
