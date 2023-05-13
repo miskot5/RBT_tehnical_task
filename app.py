@@ -4,6 +4,8 @@ from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask import request, jsonify
+from sqlalchemy import and_
+from werkzeug.datastructures import MultiDict
 
 import crawler
 
@@ -203,13 +205,140 @@ def crawl():
 
 @app.route('/real_estate/<int:id>', methods = ['GET'])
 def get_real_estate_by_id(id):
-    real_estate = db.session.query(RealEstate).filter_by(id=id).first()
+    real_estate = db.session.query(RealEstate).filter_by(id == id).first()
 
     if not real_estate:
         return jsonify({'error': 'Real estate not found'}), 404
     return jsonify(real_estate.__json__())
 
 
+@app.route('/search', methods = ['GET'])
+def search():
+    query = RealEstate.query
+    if 'type' in request.args:
+        query = query.filter(RealEstate.type.has(name = request.args.get('type')))
+    if 'min_spm' in request.args:
+        query = query.filter(and_(RealEstate.square_meter > request.args.get('min_spm')))
+    if 'max_spm' in request.args:
+        query = query.filter(and_(RealEstate.square_meter < request.args.get('max_spm')))
+    if 'parking' in request.args:
+        query = query.filter(and_(RealEstate.parking == request.args.get('parking')))
+
+    page = request.args.get('page', 1, type = int)
+    real_estates = query.paginate(page = page, per_page = 5)
+    result = [{
+        'type_id':real_estate.type_id,
+        'type': real_estate.type.name + ", " + real_estate.type.category,
+        'location_id': real_estate.location_id,
+        'location': real_estate.location.city + ", " + real_estate.location.part_of_city,
+        'year' : real_estate.year,
+        'area' : real_estate.area,
+        'spm' : real_estate.square_meter,
+        'num_of_rooms' : real_estate.num_of_rooms,
+        'registration' : real_estate.registration,
+        'storey' : real_estate.storey,
+        'num_of_floors' : real_estate.num_of_floors,
+        'num_of_toilets' : real_estate.num_of_toilets,
+        'parking' : real_estate.parking,
+        'elevator' : real_estate.elevator,
+        'other' : real_estate.other
+    } for real_estate in real_estates]
+
+    return jsonify({
+        'success': True,
+        'results' : result,
+        'count' : len(result)
+    })
+
+
+
+@app.route('/new_real_estate', methods=['POST'])
+def create_real_estate():
+    data = request.json
+    print(data)
+    type_id = data['type_id']
+    if type(type_id) is not int:
+        return jsonify(error='Invalid type of parameter type_id'), 400
+
+    location_id = data['location_id']
+    if type(location_id) is not int:
+        return jsonify(error='Invalid type of parameter location_id'), 400
+
+    type_of_real_estate = TypeOfRealEstate.query.get(type_id)
+    location = Location.query.get(location_id)
+
+    if not type_of_real_estate or not location:
+        return jsonify(error='Invalid type_id or location_id'), 400
+
+    if type(data['offer']) is not str:
+        return jsonify(error='Invalid type of parameter offer'), 400
+    if type(data['square_meter']) is not int:
+        return jsonify(error='Invalid type of parameter square_meter'), 400
+    if type(data['year']) is not int:
+        return jsonify(error='Invalid type of parameter year'), 400
+    if type(data['area']) is not int:
+        return jsonify(error='Invalid type of parameter area'), 400
+    if type(data['storey']) is not str:
+        return jsonify(error='Invalid type of parameter storey'), 400
+    if type(data['num_of_floors']) is not int:
+        return jsonify(error='Invalid type of parameter num_of_floors'), 400
+    if type(data['registration']) is not str:
+        return jsonify(error='Invalid type of parameter registration'), 400
+    if type(data['heating_type']) is not str:
+        return jsonify(error='Invalid type of parameter heating_type'), 400
+    if type(data['num_of_rooms']) is not int:
+        return jsonify(error='Invalid type of parameter num_of_rooms'), 400
+    if type(data['num_of_toilets']) is not int:
+        return jsonify(error='Invalid type of parameter num_of_toilets'), 400
+    if type(data['parking']) is not str:
+        return jsonify(error='Invalid type of parameter parking'), 400
+    if type(data['elevator']) is not str:
+        return jsonify(error='Invalid type of parameter elevator'), 400
+    if type(data['other']) is not str:
+        return jsonify(error='Invalid type of parameter other'), 400
+
+    real_estate = RealEstate(
+        type_id=type_id,
+        location_id=location_id,
+        offer=data['offer'],
+        square_meter=data['square_meter'],
+        year=data['year'],
+        area=data['area'],
+        storey=data['storey'],
+        num_of_floors=data['num_of_floors'],
+        registration=data['registration'],
+        heating_type=data['heating_type'],
+        num_of_rooms=data['num_of_rooms'],
+        num_of_toilets=data['num_of_toilets'],
+        parking=data['parking'],
+        elevator=data['elevator'],
+        other=data['other']
+    )
+    db.session.add(real_estate)
+    db.session.commit()
+
+    return "Uspesno dodata nekretnina", 201
+
+@app.route('/update_real_estate', methods = ['POST'])
+def update_real_estate():
+    data = request.json
+    id = data['id']
+    if type(id) is not int:
+        return jsonify(error='Invalid type of parameter id'), 400
+    real_estate = db.session.query(RealEstate).filter_by(id=id).first()
+    print(real_estate)
+    if not real_estate:
+        return jsonify(error='Invalid real_estate_id'), 400
+
+    if 'registration' in data and isinstance(data['registration'],str):
+        real_estate.registration = data['registration']
+
+    if 'heating_type' in data and isinstance(data['heating_type'],str):
+        real_estate.heating_type = data['heating_type']
+
+    db.session.commit();
+
+    return "Successful update", 200
 
 if __name__ == '__main__':
     with app.app_context():
