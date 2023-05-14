@@ -1,12 +1,8 @@
-import re
-
 from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask import request, jsonify
 from sqlalchemy import and_
-from werkzeug.datastructures import MultiDict
-
 import crawler
 
 db = SQLAlchemy()
@@ -52,13 +48,13 @@ class RealEstate(db.Model):
     area = db.Column(db.Integer)
     storey = db.Column(db.String(256))
     num_of_floors = db.Column(db.Integer)
-    registration = db.Column(db.String(256))
+    registration = db.Column(db.Boolean)
     heating_type = db.Column(db.String(256))
     num_of_rooms = db.Column(db.Integer)
     num_of_toilets = db.Column(db.Integer)
-    parking = db.Column(db.String(256))
-    elevator = db.Column(db.String(256))
-    other = db.Column(db.String(256))
+    parking = db.Column(db.Boolean)
+    elevator = db.Column(db.Boolean)
+    other = db.Column(db.Boolean)
 
     def __init__(self, type_id, location_id, offer, square_meter, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
         self.type_id = type_id
@@ -112,16 +108,19 @@ def crawl():
     if not url.__contains__("nekretnine.rs"):
         return "URL nije validan"
 
-    realEstateUrls = crawler.processing_home_page(url)
+    realEstateUrls = crawler.processing_all_real_estate(url)
     count_real_estate = 0
     count_types_of_real_estate = 0
     count_location = 0
     for realEstateUrl in realEstateUrls:
         realEstate = crawler.real_estate_processing(realEstateUrl)
-
+        print(realEstate.registration)
+        print(realEstate.elevator)
+        print(realEstate.other)
+        print(realEstate.parking)
         #uzimamo grad i deo grada iz lokacije
-        city = realEstate.location.split(',')[0]
-        part_of_city = realEstate.location.split(',')[1]
+        city = realEstate.location.city
+        part_of_city = realEstate.location.part_of_city
         location = Location(city, part_of_city)
 
         existing_location = Location.query.filter(
@@ -290,11 +289,11 @@ def create_real_estate():
         return jsonify(error='Invalid type of parameter num_of_rooms'), 400
     if type(data['num_of_toilets']) is not int:
         return jsonify(error='Invalid type of parameter num_of_toilets'), 400
-    if type(data['parking']) is not str:
+    if type(data['parking']) is not bool:
         return jsonify(error='Invalid type of parameter parking'), 400
-    if type(data['elevator']) is not str:
+    if type(data['elevator']) is not bool:
         return jsonify(error='Invalid type of parameter elevator'), 400
-    if type(data['other']) is not str:
+    if type(data['other']) is not bool:
         return jsonify(error='Invalid type of parameter other'), 400
 
     real_estate = RealEstate(

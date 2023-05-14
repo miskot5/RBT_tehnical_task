@@ -23,7 +23,7 @@ class Real_Estate:
     def __json__(self):
         return {
             "type": self.processing(self.type),
-            "location": self.processing(self.location),
+            "location": self.location,
             "sp": self.processing(self.spm),
             "year": self.processing(self.year),
             "area": self.processing(self.area),
