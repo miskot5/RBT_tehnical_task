@@ -256,16 +256,47 @@ def create_real_estate():
         offer = data.get('offer')
         registration = data.get('registration')
         storey = data.get('storey')
-        num_of_floors = data.get('num_of_floors')
-        num_of_rooms = data.get('num_of_rooms')
-        square_meter = data.get('square_meter')
-        num_of_toilets = data.get('num_of_toilets')
+
+        try:
+            num_of_floors = int(data.get('num_of_floors'))
+        except Exception as e:
+            return jsonify("Paramerer num_of_floors is not int")
+
+        try:
+            num_of_rooms = int(data.get('num_of_rooms'))
+        except Exception as e:
+            return jsonify("Paramerer num_of_rooms is not int")
+
+        try:
+            square_meter = int(data.get('square_meter'))
+        except Exception as e:
+            return jsonify("Paramerer square_meter is not int")
+
+        try:
+            num_of_toilets = int(data.get('num_of_toilets'))
+        except Exception as e:
+            return jsonify("Paramerer num_of_toilets is not int")
+
         elevator = data.get('elevator')
         parking = data.get('parking')
         other = data.get('other')
-        area = data.get('area')
-        year = data.get('year')
+
+        try:
+            area = int(data.get('area'))
+        except Exception as e:
+            return jsonify("Paramerer area is not int")
+
+        try:
+            num_of_floors = int(data.get('num_of_floors'))
+        except Exception as e:
+            return jsonify("Paramerer num_of_floors is not int")
+        try:
+            year = int(data.get('year'))
+        except Exception as e:
+            return jsonify("Paramerer year is not int")
+
         heating_type = data.get('heating_type')
+
     except KeyError:
         return jsonify("Invalid key"), 400
 
@@ -284,31 +315,31 @@ def create_real_estate():
         db.session.add(type_of_real_estate)
         db.session.commit()
 
-    if type(offer) is not str:
+    if type(offer) is not str and offer is not None:
         return jsonify(error='Invalid type of parameter offer'), 400
-    if type(square_meter) is not int:
+    if type(square_meter) is not int and square_meter is not None:
         return jsonify(error='Invalid type of parameter square_meter'), 400
-    if type(year) is not int:
+    if type(year) is not int and year is not None:
         return jsonify(error='Invalid type of parameter year'), 400
-    if type(area) is not int:
+    if type(area) is not int and area is not None:
         return jsonify(error='Invalid type of parameter area'), 400
     if type(storey) is not str and storey is not None:
         return jsonify(error='Invalid type of parameter storey'), 400
-    if type(num_of_floors) is not int:
+    if type(num_of_floors) is not int and num_of_floors is not None:
         return jsonify(error='Invalid type of parameter num_of_floors'), 400
-    if type(registration) is not bool:
+    if type(registration) is not bool and registration is not None:
         return jsonify(error='Invalid type of parameter registration'), 400
-    if type(heating_type) is not str:
+    if type(heating_type) is not str and heating_type is not None:
         return jsonify(error='Invalid type of parameter heating_type'), 400
-    if type(num_of_rooms) is not int:
+    if type(num_of_rooms) is not int and num_of_rooms is not None:
         return jsonify(error='Invalid type of parameter num_of_rooms'), 400
-    if type(num_of_toilets) is not int:
+    if type(num_of_toilets) is not int and num_of_toilets is not None:
         return jsonify(error='Invalid type of parameter num_of_toilets'), 400
-    if type(parking) is not bool:
+    if type(parking) is not bool and parking is not None:
         return jsonify(error='Invalid type of parameter parking'), 400
-    if type(elevator) is not bool:
+    if type(elevator) is not bool and elevator is not None:
         return jsonify(error='Invalid type of parameter elevator'), 400
-    if type(other) is not bool:
+    if type(other) is not bool and other is not None:
         return jsonify(error='Invalid type of parameter other'), 400
 
     if type_of_real_estate.name == 'Kuca':
