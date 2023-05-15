@@ -56,7 +56,7 @@ class RealEstate(db.Model):
     elevator = db.Column(db.Boolean)
     other = db.Column(db.Boolean)
 
-    def __init__(self, type_id, location_id, offer, square_meter, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
+    def __init__(self ,type_id, location_id, offer, square_meter, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
         self.type_id = type_id
         self.location_id = location_id
         self.offer = offer
@@ -114,10 +114,7 @@ def crawl():
     count_location = 0
     for realEstateUrl in realEstateUrls:
         realEstate = crawler.real_estate_processing(realEstateUrl)
-        print(realEstate.registration)
-        print(realEstate.elevator)
-        print(realEstate.other)
-        print(realEstate.parking)
+
         #uzimamo grad i deo grada iz lokacije
         city = realEstate.location.city
         part_of_city = realEstate.location.part_of_city
@@ -135,7 +132,7 @@ def crawl():
             db.session.add(location)
             db.session.commit()
 
-        #provera da li u tipu postoje informacije i o kategoriji i o potkategoriji(pr. Stan, Petosoban stan)
+        #provera da li u tipu postoje informacije i o kategoriji i o potkategoriji(npr. Stan, Petosoban stan)
         if ',' in realEstate.type:
             type = realEstate.type.split(',')[0]
             category = realEstate.type.split(',')[1]
@@ -155,6 +152,7 @@ def crawl():
             count_types_of_real_estate+=1
             db.session.add(type_of_real_estate)
             db.session.commit()
+
         real_estate = RealEstate(
             type_id=type_of_real_estate.id,
             location_id=location.id,
@@ -204,7 +202,7 @@ def crawl():
 
 @app.route('/real_estate/<int:id>', methods = ['GET'])
 def get_real_estate_by_id(id):
-    real_estate = db.session.query(RealEstate).filter_by(id == id).first()
+    real_estate = db.session.query(RealEstate).filter(id == id).first()
 
     if not real_estate:
         return jsonify({'error': 'Real estate not found'}), 404
@@ -229,7 +227,8 @@ def search():
         'type_id':real_estate.type_id,
         'type': real_estate.type.name + ", " + real_estate.type.category,
         'location_id': real_estate.location_id,
-        'location': real_estate.location.city + ", " + real_estate.location.part_of_city,
+        'location': real_estate.location.city + ", " + real_estate.location.part_of_city if real_estate.location.part_of_city is not None else real_estate.location.city + ", "  'nepoznato',
+        'offer' : real_estate.offer,
         'year' : real_estate.year,
         'area' : real_estate.area,
         'spm' : real_estate.square_meter,
@@ -248,7 +247,6 @@ def search():
         'results' : result,
         'count' : len(result)
     })
-
 
 
 @app.route('/new_real_estate', methods=['POST'])
@@ -316,12 +314,19 @@ def create_real_estate():
     db.session.add(real_estate)
     db.session.commit()
 
-    return "Uspesno dodata nekretnina", 201
+    return "Update successful", 201
 
 @app.route('/update_real_estate', methods = ['POST'])
 def update_real_estate():
     data = request.json
-    id = data['id']
+    try:
+        id = data['id']
+    except KeyError:
+        return jsonify(error = 'Parameter id missing'), 400
+
+    if len(data) > 3:
+        return jsonify(error = 'Too many parameters'), 400
+
     if type(id) is not int:
         return jsonify(error='Invalid type of parameter id'), 400
     real_estate = db.session.query(RealEstate).filter_by(id=id).first()
@@ -329,11 +334,13 @@ def update_real_estate():
     if not real_estate:
         return jsonify(error='Invalid real_estate_id'), 400
 
-    if 'registration' in data and isinstance(data['registration'],str):
-        real_estate.registration = data['registration']
-
-    if 'heating_type' in data and isinstance(data['heating_type'],str):
-        real_estate.heating_type = data['heating_type']
+    for key in data:
+        if key != 'registration' and key != 'heating_type' and key != 'id':
+            return jsonify("Invalid parameters")
+        if key == 'registration' and isinstance(data[key], bool):
+            real_estate.registration = data[key]
+        if key == 'heating_type' and isinstance(data[key], str):
+            real_estate.heating_type = data[key]
 
     db.session.commit();
 

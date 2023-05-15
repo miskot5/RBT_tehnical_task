@@ -1,5 +1,5 @@
 class Real_Estate:
-    def __init__(self, type, offer, location, spm, year, area, storey, num_of_floors,registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
+    def __init__(self ,type, offer, location, spm, year, area, storey, num_of_floors,registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
         self.type = type
         self.offer = offer
         self.location = location

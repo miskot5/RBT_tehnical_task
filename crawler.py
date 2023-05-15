@@ -15,6 +15,7 @@ pattern_gars = r"(G|g)arsonjera"
 pattertn_sports = r"(S|s)port"
 pattern_lokal = r"(L|l)okal"
 pattern_other = re.compile(r'\b(?:(T|t)erasa|(L|l)o(dj|đ)a|(B|b)alkon)\b', re.IGNORECASE)
+pattern_work = r"(P|p)oslovni"
 
 baseURL = 'https://www.nekretnine.rs'
 def processing_home_page(URL):
@@ -64,7 +65,7 @@ def find_links_recursive(url, visited_links=None):
 
     for next_link in next_links:
         next_url = baseURL+next_link["href"]
-        if  len(visited_links) <= 2:
+        if  len(visited_links) <= 4:
             find_links_recursive(next_url, visited_links)
 
     return visited_links
@@ -95,6 +96,8 @@ def location_processing(name,city,map):
         map[name] = city
     except KeyError:
         map[name] = None
+
+
 
 def real_estate_processing(link):
     resp = requests.get(link)
@@ -137,7 +140,7 @@ def real_estate_processing(link):
         informations["Lokacija"] =  location
     type_of_real_estate = 'Nepoznato'
     if re.search(pattern_kuca, informations['Kategorija']):
-        type_of_real_estate = 'Kuca'
+        type_of_real_estate = 'Kuca' + ',' + informations['Kategorija']
     if re.search(pattern_stan, informations['Kategorija']) or re.search(pattern_gars, informations['Kategorija']):
         type_of_real_estate = 'Stan'+',' + informations['Kategorija']
     if re.search(pattern_garage, informations['Kategorija']):
@@ -150,6 +153,8 @@ def real_estate_processing(link):
         type_of_real_estate = 'Sportski objekat'
     if re.search(pattern_lokal, informations['Kategorija']) or re.search(pattern_zgrada, informations['Kategorija']):
         type_of_real_estate = 'Komercijalni objekat'
+    if re.search(pattern_work, informations['Kategorija']):
+        type_of_real_estate = 'Poslovni prostor'
     offer = informations['Transakcija']
     location_of_real_estate = informations["Lokacija"]
     spm_string = map_processing('Kvadratura', informations)
@@ -192,6 +197,8 @@ def processing_all_real_estate(URL):
     for real_estate in links:
         real_estate_links.append(baseURL+"/"+real_estate)
     return real_estate_links
+
 if __name__ == "__main__":
     real_estates= processing_all_real_estate(baseURL)
-    print(real_estates)
+    for real_estate in real_estates:
+        print(real_estate_processing(real_estate).__json__())
