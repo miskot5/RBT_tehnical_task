@@ -101,7 +101,11 @@ class RealEstate(db.Model):
 def crawl():
     data = request.get_json()
     url = data.get('url', None)
-
+    limit = data.get('limit')
+    try:
+        limit = int(limit)
+    except Exception as e:
+        return jsonify("Parameter is not int"), 400
     if not url:
         return "Nije pronađen URL u POST zahtevu."
 
@@ -111,7 +115,7 @@ def crawl():
     if not url.__contains__("nekretnine.rs"):
         return "URL nije validan"
 
-    realEstateUrls = crawler.processing_all_real_estate(url)
+    realEstateUrls = crawler.processing_all_real_estate(url, limit)
     count_real_estate = 0
     count_types_of_real_estate = 0
     count_location = 0

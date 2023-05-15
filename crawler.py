@@ -48,7 +48,7 @@ def finds_real_estate_links(url):
     return links
 
 
-def find_links_recursive(url, visited_links=None):
+def find_links_recursive(url, limit: int,visited_links=None):
     if visited_links is None:
         visited_links = set()
 
@@ -65,8 +65,8 @@ def find_links_recursive(url, visited_links=None):
 
     for next_link in next_links:
         next_url = baseURL+next_link["href"]
-        if  len(visited_links) <= 4:
-            find_links_recursive(next_url, visited_links)
+        if  len(visited_links) <= limit:
+            find_links_recursive(next_url, limit,visited_links)
 
     return visited_links
 
@@ -210,9 +210,9 @@ def extract_text_between_last_slashes(text):
 
     return None
 
-def processing_all_real_estate(URL):
+def processing_all_real_estate(URL, limit):
     links, start_url = processing_home_page(URL)
-    links_of_all_pages = find_links_recursive(start_url)
+    links_of_all_pages = find_links_recursive(start_url, int(limit))
     for page_link in links_of_all_pages:
         links.extend(finds_real_estate_links(page_link))
     real_estate_links = []
