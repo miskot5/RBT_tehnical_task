@@ -37,6 +37,7 @@ class TypeOfRealEstate(db.Model):
 
 class RealEstate(db.Model):
     __tablename__ = 'real_estate'
+    external_id = db.Column(db.String(256))
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     type_id = db.Column(db.Integer, db.ForeignKey('type_of_real_estate.id'))
     type = db.relationship('TypeOfRealEstate', backref = db.backref('real_estate', lazy='joined'))
@@ -56,7 +57,8 @@ class RealEstate(db.Model):
     elevator = db.Column(db.Boolean)
     other = db.Column(db.Boolean)
 
-    def __init__(self ,type_id, location_id, offer, square_meter, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
+    def __init__(self, external_id,type_id, location_id, offer, square_meter, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other):
+        self.external_id = external_id
         self.type_id = type_id
         self.location_id = location_id
         self.offer = offer
@@ -75,6 +77,7 @@ class RealEstate(db.Model):
 
     def __json__(self):
         return {
+            "external_id" : self.external_id,
             "type_id": self.type_id,
             "location_id": self.location_id,
             "type_name": self.type.name,
@@ -102,7 +105,7 @@ def crawl():
     if not url:
         return "Nije pronađen URL u POST zahtevu."
 
-    if url == "https://www.nekretnine.rs" or (url == "http://www.nekretnine.rs") or url == "www.nekretnine.rs":
+    if url == "https://www.nekretnine.rs" or url == "http://www.nekretnine.rs" or url == "www.nekretnine.rs":
         url = "http://www.nekretnine.rs/"
 
     if not url.__contains__("nekretnine.rs"):
@@ -154,6 +157,7 @@ def crawl():
             db.session.commit()
 
         real_estate = RealEstate(
+            external_id=realEstate.external_id,
             type_id=type_of_real_estate.id,
             location_id=location.id,
             offer = realEstate.offer,
@@ -170,23 +174,9 @@ def crawl():
             elevator = realEstate.elevator,
             other = realEstate.other)
 
-        existing_real_estate = RealEstate.query.filter(
-            RealEstate.type_id == real_estate.type_id,
-            RealEstate.location_id == real_estate.location_id,
-            RealEstate.offer == real_estate.offer,
-            RealEstate.square_meter == real_estate.square_meter,
-            RealEstate.year == real_estate.year,
-            RealEstate.area == real_estate.area,
-            RealEstate.registration == real_estate.registration,
-            RealEstate.storey == real_estate.storey,
-            RealEstate.num_of_floors == real_estate.num_of_floors,
-            RealEstate.heating_type == real_estate.heating_type,
-            RealEstate.num_of_rooms == real_estate.num_of_rooms,
-            RealEstate.num_of_toilets == real_estate.num_of_toilets,
-            RealEstate.parking == real_estate.parking,
-            RealEstate.elevator == real_estate.elevator,
-            RealEstate.other == real_estate.other
-        ).all()
+        #proveru da li nekretnina postoji cemo vrsiti po jedinstvenom uuid koji dobijamo direktno iz linka nekretnine sa sajta
+        #da bismo ubrzali proveru i da se ne bi vrsila po svakom atributu objekta real_estate
+        existing_real_estate = RealEstate.query.filter(RealEstate.external_id==real_estate.external_id).all()
 
         if existing_real_estate:
             real_estate = existing_real_estate
@@ -257,7 +247,7 @@ def create_real_estate():
     try:
         city = data.get('city')
         part_of_city = data.get('part_of_city')
-        name_od_type = data.get('name')
+        name_of_type = data.get('name')
         category = data.get('category')
         offer = data.get('offer')
         registration = data.get('registration')
@@ -274,6 +264,7 @@ def create_real_estate():
         heating_type = data.get('heating_type')
     except KeyError:
         return jsonify("Invalid key"), 400
+
     # Provera postoji li lokacija u bazi
     location = Location.query.filter_by(city=" " + city, part_of_city=part_of_city).first()
 
@@ -282,10 +273,10 @@ def create_real_estate():
         db.session.add(location)
         db.session.commit()
 
-    # Provjera postoji li tip nekretnine u bazi
-    type_of_real_estate = TypeOfRealEstate.query.filter_by(name=name_od_type, category=category).first()
+    # Provera postoji li tip nekretnine u bazi
+    type_of_real_estate = TypeOfRealEstate.query.filter_by(name=name_of_type, category=category).first()
     if not type_of_real_estate:
-        type_of_real_estate = TypeOfRealEstate(name=name_od_type, category=category)
+        type_of_real_estate = TypeOfRealEstate(name=name_of_type, category=category)
         db.session.add(type_of_real_estate)
         db.session.commit()
 
@@ -297,7 +288,7 @@ def create_real_estate():
         return jsonify(error='Invalid type of parameter year'), 400
     if type(area) is not int:
         return jsonify(error='Invalid type of parameter area'), 400
-    if type(storey) is not str:
+    if type(storey) is not str and storey is not None:
         return jsonify(error='Invalid type of parameter storey'), 400
     if type(num_of_floors) is not int:
         return jsonify(error='Invalid type of parameter num_of_floors'), 400
@@ -318,6 +309,7 @@ def create_real_estate():
 
     if type_of_real_estate.name == 'Kuca':
         real_estate = RealEstate(
+            external_id = None,
             type_id=type_of_real_estate.id,
             location_id=location.id,
             offer=offer,
@@ -336,6 +328,7 @@ def create_real_estate():
     )
     else:
         real_estate = RealEstate(
+            external_id=None,
             type_id=type_of_real_estate.id,
             location_id=location.id,
             offer=offer,
@@ -355,7 +348,7 @@ def create_real_estate():
     db.session.add(real_estate)
     db.session.commit()
 
-    return "Update successful", 201
+    return "Creating successful", 201
 
 @app.route('/update_real_estate', methods = ['POST'])
 def update_real_estate():

@@ -5,10 +5,10 @@ import Real_estate
 import Location
 
 pattern_elevator = r"(L|l)ift"
-pattern_kuca = r"\b(K|k)uća\b"
+pattern_kuca = r"\b(K|k)u(ć|c)a\b"
 pattern_stan = r"\b(S|s)tan\b"
 pattern_zgrada = r"(Z|z)grada"
-pattern_garage = r"(G|g)araža"
+pattern_garage = r"(G|g)ara(ž|z)a"
 pattern_parking = r"(P|p)arking"
 pattern_build = r"(G|g)radjevin"
 pattern_gars = r"(G|g)arsonjera"
@@ -75,8 +75,6 @@ def find_links_recursive(url, visited_links=None):
 def map_processing(key, map):
     if key not in map:
         map[key] = None
-    #if map[key] is not None and map[key].isdigit():
-    #    return int(map[key])
     else:
         return map[key]
 
@@ -97,9 +95,22 @@ def location_processing(name,city,map):
     except KeyError:
         map[name] = None
 
+#za izvlacenje uuid linka nekretnine
+def extract_text_between_last_slashes(text):
+    last_slash_index = text.rfind("/")
 
+    if last_slash_index != -1:
+        second_last_slash_index = text.rfind("/", 0, last_slash_index)
+
+        if second_last_slash_index != -1:
+            extracted_text = text[
+                             second_last_slash_index + 1: last_slash_index]
+            return extracted_text
+
+    return None
 
 def real_estate_processing(link):
+    external_id = extract_text_between_last_slashes(link)
     resp = requests.get(link)
     soup = BeautifulSoup(resp.text, 'html.parser')
     infos_soup = soup.select('.property__amenities > ul > li')
@@ -182,11 +193,22 @@ def real_estate_processing(link):
     num_of_toilets_str = map_processing('Broj kupatila', informations)
     num_of_toilets = string_to_int_processing(num_of_toilets_str, 'nepoznato')
 
-
-    real_estate = Real_estate.Real_Estate(type_of_real_estate, offer, location_of_real_estate, spm, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other)
+    real_estate = Real_estate.Real_Estate(external_id,type_of_real_estate, offer, location_of_real_estate, spm, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other)
 
     return real_estate
 
+def extract_text_between_last_slashes(text):
+    last_slash_index = text.rfind("/")
+
+    if last_slash_index != -1:
+        second_last_slash_index = text.rfind("/", 0, last_slash_index)
+
+        if second_last_slash_index != -1:
+            extracted_text = text[
+                             second_last_slash_index + 1: last_slash_index]
+            return extracted_text
+
+    return None
 
 def processing_all_real_estate(URL):
     links, start_url = processing_home_page(URL)
@@ -197,8 +219,3 @@ def processing_all_real_estate(URL):
     for real_estate in links:
         real_estate_links.append(baseURL+"/"+real_estate)
     return real_estate_links
-
-if __name__ == "__main__":
-    real_estates= processing_all_real_estate(baseURL)
-    for real_estate in real_estates:
-        print(real_estate_processing(real_estate).__json__())
