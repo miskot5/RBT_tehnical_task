@@ -252,65 +252,106 @@ def search():
 @app.route('/new_real_estate', methods=['POST'])
 def create_real_estate():
     data = request.json
-    print(data)
-    type_id = data['type_id']
-    if type(type_id) is not int:
-        return jsonify(error='Invalid type of parameter type_id'), 400
 
-    location_id = data['location_id']
-    if type(location_id) is not int:
-        return jsonify(error='Invalid type of parameter location_id'), 400
+    # Podaci iz zahteva
+    try:
+        city = data.get('city')
+        part_of_city = data.get('part_of_city')
+        name_od_type = data.get('name')
+        category = data.get('category')
+        offer = data.get('offer')
+        registration = data.get('registration')
+        storey = data.get('storey')
+        num_of_floors = data.get('num_of_floors')
+        num_of_rooms = data.get('num_of_rooms')
+        square_meter = data.get('square_meter')
+        num_of_toilets = data.get('num_of_toilets')
+        elevator = data.get('elevator')
+        parking = data.get('parking')
+        other = data.get('other')
+        area = data.get('area')
+        year = data.get('year')
+        heating_type = data.get('heating_type')
+    except KeyError:
+        return jsonify("Invalid key"), 400
+    # Provera postoji li lokacija u bazi
+    location = Location.query.filter_by(city=" " + city, part_of_city=part_of_city).first()
 
-    type_of_real_estate = TypeOfRealEstate.query.get(type_id)
-    location = Location.query.get(location_id)
+    if not location:
+        location = Location(city=" "+city, part_of_city=part_of_city)
+        db.session.add(location)
+        db.session.commit()
 
-    if not type_of_real_estate or not location:
-        return jsonify(error='Invalid type_id or location_id'), 400
+    # Provjera postoji li tip nekretnine u bazi
+    type_of_real_estate = TypeOfRealEstate.query.filter_by(name=name_od_type, category=category).first()
+    if not type_of_real_estate:
+        type_of_real_estate = TypeOfRealEstate(name=name_od_type, category=category)
+        db.session.add(type_of_real_estate)
+        db.session.commit()
 
-    if type(data['offer']) is not str:
+    if type(offer) is not str:
         return jsonify(error='Invalid type of parameter offer'), 400
-    if type(data['square_meter']) is not int:
+    if type(square_meter) is not int:
         return jsonify(error='Invalid type of parameter square_meter'), 400
-    if type(data['year']) is not int:
+    if type(year) is not int:
         return jsonify(error='Invalid type of parameter year'), 400
-    if type(data['area']) is not int:
+    if type(area) is not int:
         return jsonify(error='Invalid type of parameter area'), 400
-    if type(data['storey']) is not str:
+    if type(storey) is not str:
         return jsonify(error='Invalid type of parameter storey'), 400
-    if type(data['num_of_floors']) is not int:
+    if type(num_of_floors) is not int:
         return jsonify(error='Invalid type of parameter num_of_floors'), 400
-    if type(data['registration']) is not str:
+    if type(registration) is not bool:
         return jsonify(error='Invalid type of parameter registration'), 400
-    if type(data['heating_type']) is not str:
+    if type(heating_type) is not str:
         return jsonify(error='Invalid type of parameter heating_type'), 400
-    if type(data['num_of_rooms']) is not int:
+    if type(num_of_rooms) is not int:
         return jsonify(error='Invalid type of parameter num_of_rooms'), 400
-    if type(data['num_of_toilets']) is not int:
+    if type(num_of_toilets) is not int:
         return jsonify(error='Invalid type of parameter num_of_toilets'), 400
-    if type(data['parking']) is not bool:
+    if type(parking) is not bool:
         return jsonify(error='Invalid type of parameter parking'), 400
-    if type(data['elevator']) is not bool:
+    if type(elevator) is not bool:
         return jsonify(error='Invalid type of parameter elevator'), 400
-    if type(data['other']) is not bool:
+    if type(other) is not bool:
         return jsonify(error='Invalid type of parameter other'), 400
 
-    real_estate = RealEstate(
-        type_id=type_id,
-        location_id=location_id,
-        offer=data['offer'],
-        square_meter=data['square_meter'],
-        year=data['year'],
-        area=data['area'],
-        storey=data['storey'],
-        num_of_floors=data['num_of_floors'],
-        registration=data['registration'],
-        heating_type=data['heating_type'],
-        num_of_rooms=data['num_of_rooms'],
-        num_of_toilets=data['num_of_toilets'],
-        parking=data['parking'],
-        elevator=data['elevator'],
-        other=data['other']
+    if type_of_real_estate.name == 'Kuca':
+        real_estate = RealEstate(
+            type_id=type_of_real_estate.id,
+            location_id=location.id,
+            offer=offer,
+            square_meter=square_meter,
+            year=year,
+            area=area,
+            storey = None,
+            num_of_floors=num_of_floors,
+            registration=registration,
+            heating_type=heating_type,
+            num_of_rooms=num_of_rooms,
+            num_of_toilets=num_of_toilets,
+            parking=parking,
+            elevator=elevator,
+            other=other
     )
+    else:
+        real_estate = RealEstate(
+            type_id=type_of_real_estate.id,
+            location_id=location.id,
+            offer=offer,
+            square_meter=square_meter,
+            year=year,
+            area=0,
+            storey=storey,
+            num_of_floors=num_of_floors,
+            registration=registration,
+            heating_type=heating_type,
+            num_of_rooms=num_of_rooms,
+            num_of_toilets=num_of_toilets,
+            parking=parking,
+            elevator=elevator,
+            other=other
+        )
     db.session.add(real_estate)
     db.session.commit()
 
