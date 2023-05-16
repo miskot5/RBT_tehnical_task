@@ -34,7 +34,6 @@ def processing_home_page(URL):
 
     return links, baseURL+all_href
 
-
 def finds_real_estate_links(url):
     resp = requests.get(url)
     soup = BeautifulSoup(resp.text, 'html.parser')
@@ -46,7 +45,6 @@ def finds_real_estate_links(url):
         links.append(item_link)
 
     return links
-
 
 def find_links_recursive(url, limit: int,visited_links=None):
     if visited_links is None:
@@ -70,7 +68,6 @@ def find_links_recursive(url, limit: int,visited_links=None):
 
     return visited_links
 
-
 #ako nismo u html reprezentaciji nasli odredjeni podatak, svakako zelimo da imamo podatak o tome u mapi, da bismo u bazi mogli to da cuvamo kao null
 def map_processing(key, map):
     if key not in map:
@@ -78,7 +75,6 @@ def map_processing(key, map):
     else:
         return map[key]
 
-#kod integer atributa, vrednost -1 oznacavace nepostojanje vrednosti
 def string_to_int_processing(attribute_string, string):
     if attribute_string == string:
         return None
@@ -124,12 +120,10 @@ def real_estate_processing(link):
         information = re.sub('\s{2,}','',info.text)
         separator = ':'
 
-
         if separator in information:
             separator_position = information.index(separator)
             informations[information[:separator_position]] = information[separator_position + 1:]
         if separator not in information:
-
 
             if re.search(pattern_elevator, information):
                 elevator = True
@@ -137,7 +131,6 @@ def real_estate_processing(link):
                 other = True
             if re.search(pattern_garage, information) or re.search(pattern_parking, information):
                 parking = True
-
 
     location_soup = soup.select(".stickyBox__Location")
     for loc in location_soup:
@@ -150,28 +143,38 @@ def real_estate_processing(link):
             location = Location.Location(city, part_of_city)
         informations["Lokacija"] =  location
     type_of_real_estate = 'Nepoznato'
+
     if re.search(pattern_kuca, informations['Kategorija']):
         type_of_real_estate = 'Kuca' + ',' + informations['Kategorija']
+
     if re.search(pattern_stan, informations['Kategorija']) or re.search(pattern_gars, informations['Kategorija']):
         type_of_real_estate = 'Stan'+',' + informations['Kategorija']
+
     if re.search(pattern_garage, informations['Kategorija']):
         type_of_real_estate = 'Garazno mesto'
+
     if re.search(pattern_parking, informations['Kategorija']):
         type_of_real_estate = 'Parking mesto'
+
     if re.search(pattern_build, informations['Kategorija']):
         type_of_real_estate = 'Gradjevinsko zemljiste'
+
     if re.search(pattertn_sports, informations['Kategorija']):
         type_of_real_estate = 'Sportski objekat'
+
     if re.search(pattern_lokal, informations['Kategorija']) or re.search(pattern_zgrada, informations['Kategorija']):
         type_of_real_estate = 'Komercijalni objekat'
+
     if re.search(pattern_work, informations['Kategorija']):
         type_of_real_estate = 'Poslovni prostor'
+
     offer = informations['Transakcija']
     location_of_real_estate = informations["Lokacija"]
     spm_string = map_processing('Kvadratura', informations)
     spm = string_to_int_processing(spm_string,'nepoznato')
     year_string = map_processing('Godina izgradnje',informations)
     year = string_to_int_processing(year_string, 'nepoznato')
+
     if type_of_real_estate == 'Kuca':
         area_string = map_processing('Površina zemljišta', informations)
         area = string_to_int_processing(area_string,'nepoznato')
