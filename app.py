@@ -242,6 +242,70 @@ def search():
         'count' : len(result)
     })
 
+@app.route('/new_location', methods = ['POST'])
+def create_location():
+    data = request.json
+    print(data)
+    try:
+        city = data['city']
+        if type(city) is not str:
+           return jsonify("Invalid parameter city")
+    except KeyError:
+        return jsonify("City missing"), 400
+
+    try:
+        part_of_city = data['part_of_city']
+        print(part_of_city)
+        if type(part_of_city) is not str:
+            return jsonify("Invalid parameter part_of_city")
+    except KeyError:
+        return jsonify("Part_of_city missing"), 400
+
+    existing_location = Location.query.filter(
+        Location.city == city,
+        Location.part_of_city == part_of_city
+    ).first()
+
+    if existing_location:
+        return jsonify("Location already exist"), 400
+    else:
+        location = Location(city, part_of_city)
+        db.session.add(location)
+        db.session.commit()
+        return jsonify("Location created"), 200
+
+
+@app.route('/new_type_of_real_estate', methods=['POST'])
+def create_type_of_real_estate():
+    data = request.json
+
+    try:
+        name = data['name']
+        if type(name) is not str:
+            return jsonify("Invalid parameter name")
+    except KeyError:
+        return jsonify("Name missing"), 400
+
+    try:
+        category = data['category']
+        if type(category) is not str:
+            return jsonify("Invalid parameter category")
+    except KeyError:
+        return jsonify("category missing"), 400
+
+    existing_type = TypeOfRealEstate.query.filter(
+        TypeOfRealEstate.name == name,
+        TypeOfRealEstate.category == category
+    ).first()
+
+    if existing_type:
+        return jsonify("Location already exist"), 400
+    else:
+        type_of_real_estate = TypeOfRealEstate(name, category)
+        db.session.add(type_of_real_estate)
+        db.session.commit()
+        return jsonify("Type of real estate created"), 200
+
 
 @app.route('/new_real_estate', methods=['POST'])
 def create_real_estate():
@@ -249,104 +313,94 @@ def create_real_estate():
 
     # Podaci iz zahteva
     try:
-        city = data.get('city')
-        part_of_city = data.get('part_of_city')
-        name_of_type = data.get('name')
-        category = data.get('category')
-        offer = data.get('offer')
-        registration = data.get('registration')
-        storey = data.get('storey')
-
-        try:
-            num_of_floors = int(data.get('num_of_floors'))
-        except Exception as e:
-            return jsonify("Paramerer num_of_floors is not int")
-
-        try:
-            num_of_rooms = int(data.get('num_of_rooms'))
-        except Exception as e:
-            return jsonify("Paramerer num_of_rooms is not int")
-
-        try:
-            square_meter = int(data.get('square_meter'))
-        except Exception as e:
-            return jsonify("Paramerer square_meter is not int")
-
-        try:
-            num_of_toilets = int(data.get('num_of_toilets'))
-        except Exception as e:
-            return jsonify("Paramerer num_of_toilets is not int")
-
-        elevator = data.get('elevator')
-        parking = data.get('parking')
-        other = data.get('other')
-
-        try:
-            area = int(data.get('area'))
-        except Exception as e:
-            return jsonify("Paramerer area is not int")
-
-        try:
-            num_of_floors = int(data.get('num_of_floors'))
-        except Exception as e:
-            return jsonify("Paramerer num_of_floors is not int")
-        try:
-            year = int(data.get('year'))
-        except Exception as e:
-            return jsonify("Paramerer year is not int")
-
-        heating_type = data.get('heating_type')
-
+        location_id = int(data['location_id'])
     except KeyError:
-        return jsonify("Invalid key"), 400
+        return jsonify("Location_id missing")
+    except Exception as e:
+        return jsonify("Invalid parameter location_id")
 
-    # Provera postoji li lokacija u bazi
-    location = Location.query.filter_by(city=" " + city, part_of_city=part_of_city).first()
-
+    location = Location.query.filter(Location.id == location_id).first()
     if not location:
-        location = Location(city=" "+city, part_of_city=part_of_city)
-        db.session.add(location)
-        db.session.commit()
+        return jsonify("Location not exist"), 404
 
-    # Provera postoji li tip nekretnine u bazi
-    type_of_real_estate = TypeOfRealEstate.query.filter_by(name=name_of_type, category=category).first()
+    try:
+        type_id = int(data['type_id'])
+    except KeyError:
+        return jsonify("Location_id missing")
+    except Exception as e:
+        return jsonify("Invalid parameter location_id")
+
+    type_of_real_estate = TypeOfRealEstate.query.filter(TypeOfRealEstate.id == type_id).first()
     if not type_of_real_estate:
-        type_of_real_estate = TypeOfRealEstate(name=name_of_type, category=category)
-        db.session.add(type_of_real_estate)
-        db.session.commit()
+        return jsonify("Type of real estate not exist"), 404
 
-    if type(offer) is not str and offer is not None:
-        return jsonify(error='Invalid type of parameter offer'), 400
-    if type(square_meter) is not int and square_meter is not None:
-        return jsonify(error='Invalid type of parameter square_meter'), 400
-    if type(year) is not int and year is not None:
-        return jsonify(error='Invalid type of parameter year'), 400
-    if type(area) is not int and area is not None:
-        return jsonify(error='Invalid type of parameter area'), 400
-    if type(storey) is not str and storey is not None:
-        return jsonify(error='Invalid type of parameter storey'), 400
-    if type(num_of_floors) is not int and num_of_floors is not None:
-        return jsonify(error='Invalid type of parameter num_of_floors'), 400
-    if type(registration) is not bool and registration is not None:
-        return jsonify(error='Invalid type of parameter registration'), 400
-    if type(heating_type) is not str and heating_type is not None:
-        return jsonify(error='Invalid type of parameter heating_type'), 400
-    if type(num_of_rooms) is not int and num_of_rooms is not None:
-        return jsonify(error='Invalid type of parameter num_of_rooms'), 400
-    if type(num_of_toilets) is not int and num_of_toilets is not None:
-        return jsonify(error='Invalid type of parameter num_of_toilets'), 400
-    if type(parking) is not bool and parking is not None:
-        return jsonify(error='Invalid type of parameter parking'), 400
-    if type(elevator) is not bool and elevator is not None:
-        return jsonify(error='Invalid type of parameter elevator'), 400
-    if type(other) is not bool and other is not None:
-        return jsonify(error='Invalid type of parameter other'), 400
+    offer = data.get('offer', None)
+    if type(offer) is not str:
+        return jsonify("Invalid parameter offer"), 400
+
+    registration = data.get('registration', False)
+    if type(registration) is not bool:
+        return jsonify("Invalid parameter registration"), 400
+
+
+    storey = data.get('storey')
+    if type(storey) is not str:
+        return jsonify("Invalid parameter storey"), 400
+
+    try:
+        num_of_floors = int(data.get('num_of_floors'))
+    except Exception as e:
+        return jsonify("Paramerer num_of_floors is not int")
+
+    try:
+        num_of_rooms = int(data.get('num_of_rooms'))
+    except Exception as e:
+        return jsonify("Paramerer num_of_rooms is not int")
+
+    try:
+        square_meter = int(data.get('square_meter'))
+    except Exception as e:
+        return jsonify("Paramerer square_meter is not int")
+
+    try:
+        num_of_toilets = int(data.get('num_of_toilets'))
+    except Exception as e:
+        return jsonify("Paramerer num_of_toilets is not int")
+
+    elevator = data.get('elevator', False)
+    if type(elevator) is not bool:
+        return jsonify("Invalid parameter elevator"), 400
+
+
+    parking = data.get('parking', False)
+    if type(parking) is not bool:
+        return jsonify("Invalid parameter parking"), 400
+
+    other = data.get('other', False)
+    if type(other) is not bool:
+        return jsonify("Invalid parameter other"), 400
+
+    try:
+        area = int(data.get('area'))
+    except Exception as e:
+        return jsonify("Paramerer area is not int")
+
+    try:
+        year = int(data.get('year'))
+    except KeyError:
+        year = None
+    except Exception as e:
+        return jsonify("Paramerer year is not int")
+
+    heating_type = data.get('heating_type', None)
+    if type(heating_type) is not str:
+        return jsonify("Invalid parameter heating_type"), 400
 
     if type_of_real_estate.name == 'Kuca':
         real_estate = RealEstate(
             external_id = None,
-            type_id=type_of_real_estate.id,
-            location_id=location.id,
+            type_id=type_id,
+            location_id=location_id,
             offer=offer,
             square_meter=square_meter,
             year=year,
@@ -360,12 +414,12 @@ def create_real_estate():
             parking=parking,
             elevator=elevator,
             other=other
-    )
+        )
     else:
         real_estate = RealEstate(
             external_id=None,
-            type_id=type_of_real_estate.id,
-            location_id=location.id,
+            type_id=type_id,
+            location_id=location_id,
             offer=offer,
             square_meter=square_meter,
             year=year,
