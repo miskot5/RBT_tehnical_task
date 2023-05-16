@@ -1,32 +1,51 @@
-# Real Estate Listings Search Project
+# Web Indekser - Dokumentacija
 
-This project is a web-based application that allows users to search for real estate listings on the website www.nekretnine.rs. The project consists of a backend component developed using Python and the Flask web framework, and a MySQL database to store data.
+Ova dokumentacija opisuje web indekser (web crawler) koji prikuplja informacije o nekretninama koje se izdaju ili prodaju u Srbiji. Web indekser povezuje se na web stranicu `https://www.nekretnine.rs/`, preuzima njen sadržaj i parsira ga kako bi pronašao informacije o nekretninama. Prikupljene informacije se čuvaju u MySQL bazi podataka.
 
-## Installation
+### Prikupljanje informacija o nekretninama
 
-1. Clone this repository to your local machine
-2. 
-3. Create a new MySQL database and run the SQL script located in the `database` directory to create the necessary tables.
+Web indekser obilazi web stranicu `https://www.nekretnine.rs/`, prepoznaje linkove i ulazi na druge stranice kako bi ponovio proces prikupljanja informacija o nekretninama. Pored otkrivanja linkova, parser prepoznaje i druge sadržaje na stranici, kao što su `div`, `span`, `li`, itd. Informacije o nekretninama koje se prikupljaju uključuju:
 
-## Usage
+- Tip nekretnine (stan ili kuća)
+- Tip ponude (prodaja ili iznajmljivanje)
+- Lokacija (grad i deo grada)
+- Kvadratura nekretnine
+- Godina izgradnje
+- Površina zemljišta (samo za kuće)
+- Spratnost (ukupna spratnost i sprat na kojem se nalazi, samo za stanove)
+- Uknjiženost (da/ne)
+- Tip grejanja
+- Ukupan broj soba
+- Ukupan broj kupatila (toaleta)
+- Podaci o parkingu (da/ne)
+- Dodatne informacije (prisustvo lifta, terase/lođe/balkona)
 
-To start the Flask application, run the following command:
-This will start the application on your local machine, and you can access it by visiting http://localhost:5000/ in your web browser.
+Ako neki od podataka nije dostupan u oglasu, polje u bazi ostaje prazno.
 
-From the main page, users can enter search criteria such as location, price range, and property type, and the application will display a list of matching real estate listings from the www.nekretnine.rs website.
+### Mini-aplikacija u Flask-u
 
-## Database Schema
+Napravljena je mini-aplikacija koristeći Flask framework u Python-u koja pruža API za interakciju sa prikupljenim podacima o nekretninama. Aplikacija obezbeđuje sledeće API endpointe:
 
-The MySQL database schema for this project is represented by the following UML diagram:
+1.  GET/crawl - Dohvata informacije o svim nekretninama
+2. `GET /real_estate/{id}` - Dohvata informacije o nekretnini na osnovu ID-ja nekretnine.
+3. `GET /search` - Pretražuje nekretnine na osnovu zadatih parametara:
+   - `tip` - Tip nekretnine (kuća/stan)
+   - `minimalna_kvadratura` - Minimalna kvadratura nekretnine
+   - `maksimalna_kvadratura` - Maksimalna kvadratura nekretnine
+   - `parking` - Da/Ne (prisustvo parkinga)
+4. `POST /real_estate` - Kreira novu nekretninu za prodaju/izdavanje.
+5. `POST /update_real_estate` - Menja podatke nekretnine na osnovu ID-a nekretnine
+6. 'POST /location' - Dodaje novu lokaciju 
+7. 'POST /type_of_real_estate' - Dodaje nov tip nekrtnine
 
-![Database UML Diagram](./nekretnine_db.pdf)
+API za pretraživanje nekretnina omogućava pretragu na osnovu više parametara ili bez navođenja parametara. Implementirana je paginacija za rezultate pretrage nekretnina.
 
-## Credits
+### Pokretanje aplikacije
+Da biste pokrenuli aplikaciju, pratite sledeće korake:
 
-This project was developed by Miodrag Todorovic as a personal project to practice Python and web development skills. 
+1.Podesite MySQL bazu podataka sa odgovarajućim parametrima za povezivanje (migracije se kreiraju uz pomoc flaskove biblioteke flask-sqllchemy).
+2.Pokrenite aplikaciju izvršavanjem python app.py u terminalu.
+3.Aplikacija će biti dostupna na adresi http://localhost:5000.
 
-The project relies on data from www.nekretnine.rs, and we thank them for providing the data that powers this application.
-
-## License
-
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT). See the `LICENSE` file for details.
+### Napomena
+Ova aplikacija je namenjena samo u edukativne svrhe. Pre upotrebe na stvarnim podacima, pobrinite se da poštujete pravila i uslove korišćenja web stranice https://www.nekretnine.rs/ i da imate dozvolu za prikupljanje i upotrebu podataka.
