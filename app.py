@@ -1,14 +1,17 @@
+import math
+
+import config
 from config import *
 from flask_migrate import Migrate
 from flask import request, jsonify
 from sqlalchemy import and_
 import crawler
-from models.location import Location
-from models.real_estate import RealEstate
-from models.type_of_real_estate import TypeOfRealEstate
+from models.location import Location, LocationSchema
+from models.real_estate import RealEstate, RealEstateSchema, UpdateRealEstateSchema
+from models.type_of_real_estate import TypeOfRealEstate, TypeOfRealEstateSchema
 
-migrate = Migrate(app, db)
-db.init_app(app)
+migrate = Migrate(config.app, db)
+db.init_app(config.app)
 
 
 @app.route('/crawl', methods=['POST'])
@@ -150,236 +153,82 @@ def search():
     return jsonify({
         'results': result,
         'pagnation': {
-            'count': len(result),
+            'per_page': len(result),
+            'number of pages': math.ceil(num_of_real_estates / per_page),
             'number of real estates': num_of_real_estates,
             'current page': page
         },
         'success': True
     }, 200)
 
-    @app.route('/location', methods=['POST'])
-    def create_location():
-        data = request.json
-        print(data)
-        try:
-            city = data['city']
-            if type(city) is not str:
-                return jsonify("Invalid parameter city"), 404
-        except KeyError:
-            return jsonify("City missing"), 404
 
-        try:
-            part_of_city = data['part_of_city']
-            print(part_of_city)
-            if type(part_of_city) is not str:
-                return jsonify("Invalid parameter part_of_city"), 404
-        except KeyError:
-            return jsonify("Part_of_city missing"), 400
+@app.route('/location', methods=['POST'])
+def create_location():
+    data = request.json
 
-        existing_location = Location.query.filter(
-            Location.city == city,
-            Location.part_of_city == part_of_city
-        ).first()
+    location_schema = LocationSchema()
+    new_location = location_schema.load(data)
 
-        if existing_location:
-            return jsonify("Location already exist"), 404
-        else:
-            location = Location(city, part_of_city)
-            db.session.add(location)
-            db.session.commit()
-            return jsonify("Location created"), 200
+    location = Location(new_location.get('city'), new_location.get('part_of_city'))
+    db.session.add(location)
+    db.session.commit()
 
-    @app.route('/type_of_real_estate', methods=['POST'])
-    def create_type_of_real_estate():
-        data = request.json
+    return location.__json__(), 200
 
-        try:
-            name = data['name']
-            if type(name) is not str:
-                return jsonify("Invalid parameter name"), 404
-        except KeyError:
-            return jsonify("Name missing"), 404
 
-        try:
-            category = data['category']
-            if type(category) is not str:
-                return jsonify("Invalid parameter category"), 404
-        except KeyError:
-            return jsonify("category missing"), 404
+@app.route('/type_of_real_estate', methods=['POST'])
+def create_type_of_real_estate():
+    data = request.json
 
-        existing_type = TypeOfRealEstate.query.filter(
-            TypeOfRealEstate.name == name,
-            TypeOfRealEstate.category == category
-        ).first()
+    type_schema = TypeOfRealEstateSchema()
+    new_type = type_schema.load(data)
 
-        if existing_type:
-            return jsonify("Location already exist"), 400
-        else:
-            type_of_real_estate = TypeOfRealEstate(name, category)
-            db.session.add(type_of_real_estate)
-            db.session.commit()
-            return jsonify("Type of real estate created"), 200
+    type_of_real_estate = TypeOfRealEstate(new_type.get('name'), new_type.get('category'))
+    db.session.add(type_of_real_estate)
+    db.session.commit()
 
-    @app.route('/real_estate', methods=['POST'])
-    def create_real_estate():
-        data = request.json
+    return type_of_real_estate.__json__(), 200
 
-        # Podaci iz zahteva
-        try:
-            location_id = int(data['location_id'])
-        except KeyError:
-            return jsonify("Location_id missing"), 404
-        except ValueError:
-            return jsonify("Invalid parameter location_id"), 404
 
-        location = Location.query.filter(Location.id == location_id).first()
-        if not location:
-            return jsonify("Location not exist"), 404
+@app.route('/real_estate', methods=['POST'])
+def create_real_estate():
+    data_json = request.json
 
-        try:
-            type_id = int(data['type_id'])
-        except KeyError:
-            return jsonify("Location_id missing"), 404
-        except ValueError:
-            return jsonify("Invalid parameter location_id"), 404
+    real_estate_schema = RealEstateSchema()
+    data = real_estate_schema.load(data_json)
+    new_real_estate = RealEstate(external_id=None, type_id=data.get('type_id'), location_id=data.get('location_id'),
+                                 offer=data.get('offer'), year=data.get('year'), area=data.get('area'),
+                                 num_of_floors=data.get('num_of_floors'), registration=data.get('registration'),
+                                 num_of_rooms=data.get('num_of_rooms'), num_of_toilets=data.get('num_of_toilets'),
+                                 elevator=data.get('elevator'), parking=data.get('parking'), other=data.get('other'),
+                                 heating_type=data.get('heating_type'), square_meter=data.get('square_meter'),
+                                 storey=data.get('storey'))
 
-        type_of_real_estate = TypeOfRealEstate.query.filter(TypeOfRealEstate.id == type_id).first()
-        if not type_of_real_estate:
-            return jsonify("Type of real estate not exist"), 404
+    db.session.add(new_real_estate)
+    db.session.commit()
 
-        offer = data.get('offer', None)
-        if type(offer) is not str:
-            return jsonify("Invalid parameter offer"), 404
+    return new_real_estate.__json__(), 200
 
-        registration = data.get('registration', False)
-        if type(registration) is not bool:
-            return jsonify("Invalid parameter registration"), 404
 
-        storey = data.get('storey')
-        if type(storey) is not str:
-            return jsonify("Invalid parameter storey"), 404
+@app.route('/real_estate/<int:estate_id>', methods=['PUT'])
+def update_real_estate(estate_id):
+    data_json = request.json
+    update_real_estate_schema = UpdateRealEstateSchema()
+    data = update_real_estate_schema.load(data_json)
 
-        try:
-            num_of_floors = int(data.get('num_of_floors'))
-        except ValueError:
-            return jsonify("Paramerer num_of_floors is not int"), 404
+    print(data_json)
+    print(estate_id)
+    real_estate = RealEstate.query.filter(RealEstate.id == estate_id).first()
+    if not real_estate:
+        return jsonify("Real estate with this id not exist"), 404
+    else:
+        if 'heating_type' in data:
+            real_estate.heating_type = data['heating_type']
+        if 'registration' in data:
+            real_estate.registration = data['registration']
 
-        try:
-            num_of_rooms = int(data.get('num_of_rooms'))
-        except ValueError:
-            return jsonify("Paramerer num_of_rooms is not int"), 404
+    return real_estate.__json__(), 200
 
-        try:
-            square_meter = int(data.get('square_meter'))
-        except ValueError:
-            return jsonify("Paramerer square_meter is not int"), 404
-
-        try:
-            num_of_toilets = int(data.get('num_of_toilets'))
-        except ValueError:
-            return jsonify("Paramerer num_of_toilets is not int"), 404
-
-        elevator = data.get('elevator', False)
-        if type(elevator) is not bool:
-            return jsonify("Invalid parameter elevator"), 404
-
-        parking = data.get('parking', False)
-        if type(parking) is not bool:
-            return jsonify("Invalid parameter parking"), 404
-
-        other = data.get('other', False)
-        if type(other) is not bool:
-            return jsonify("Invalid parameter other"), 404
-
-        try:
-            area = int(data.get('area'))
-        except ValueError:
-            return jsonify("Paramerer area is not int"), 404
-
-        try:
-            year = int(data.get('year'))
-        except KeyError:
-            year = None
-        except ValueError:
-            return jsonify("Paramerer year is not int"), 404
-
-        heating_type = data.get('heating_type', None)
-        if type(heating_type) is not str:
-            return jsonify("Invalid parameter heating_type"), 404
-
-        if type_of_real_estate.name == 'Kuca':
-            real_estate = RealEstate(
-                external_id=None,
-                type_id=type_id,
-                location_id=location_id,
-                offer=offer,
-                square_meter=square_meter,
-                year=year,
-                area=area,
-                storey=None,
-                num_of_floors=num_of_floors,
-                registration=registration,
-                heating_type=heating_type,
-                num_of_rooms=num_of_rooms,
-                num_of_toilets=num_of_toilets,
-                parking=parking,
-                elevator=elevator,
-                other=other
-            )
-        else:
-            real_estate = RealEstate(
-                external_id=None,
-                type_id=type_id,
-                location_id=location_id,
-                offer=offer,
-                square_meter=square_meter,
-                year=year,
-                area=0,
-                storey=storey,
-                num_of_floors=num_of_floors,
-                registration=registration,
-                heating_type=heating_type,
-                num_of_rooms=num_of_rooms,
-                num_of_toilets=num_of_toilets,
-                parking=parking,
-                elevator=elevator,
-                other=other
-            )
-        db.session.add(real_estate)
-        db.session.commit()
-
-        return "Creating successful", 201
-
-    @app.route('/update_real_estate/<int:estate_id>', methods=['PUT'])
-    def update_real_estate(estate_id):
-        data = request.json
-
-        try:
-            estate_id = data['id']
-        except KeyError:
-            return jsonify(error='Parameter id missing'), 404
-
-        if len(data) > 3:
-            return jsonify(error='Too many parameters'), 404
-
-        if type(id) is not int:
-            return jsonify(error='Invalid type of parameter id'), 404
-        real_estate = db.session.query(RealEstate).filter_by(id=estate_id).first()
-        print(real_estate)
-        if not real_estate:
-            return jsonify(error='Invalid real_estate_id'), 404
-
-        for key in data:
-            if key != 'registration' and key != 'heating_type' and key != 'id':
-                return jsonify("Invalid parameters")
-            if key == 'registration' and isinstance(data[key], bool):
-                real_estate.registration = data[key]
-            if key == 'heating_type' and isinstance(data[key], str):
-                real_estate.heating_type = data[key]
-
-        db.session.commit()
-
-        return "Successful update", 200
 
 if __name__ == '__main__':
     with app.app_context():

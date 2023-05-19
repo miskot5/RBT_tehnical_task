@@ -1,4 +1,8 @@
 from config import *
+from marshmallow import Schema, fields, validates_schema, validate
+from models.type_of_real_estate import TypeOfRealEstate
+from models.location import Location
+from werkzeug.exceptions import NotFound
 
 
 class RealEstate(db.Model):
@@ -62,3 +66,39 @@ class RealEstate(db.Model):
             "elevator": self.elevator,
             "other": self.other
         }
+
+
+class RealEstateSchema(Schema):
+    type_id = fields.Int(required=True)
+    location_id = fields.Int(required=True)
+    square_meter = fields.Int(required=True)
+    year = fields.Int(required=False, default=None, allow_none=True)
+    offer = fields.Str(required=True, validate=validate.OneOf(["Prodaja", "Izdavanje"]))
+    area = fields.Int(required=False, default=None, allow_none=True)
+    storey = fields.Str(required=False, default=None, allow_none=True)
+    num_of_floors = fields.Int(default=None, allow_none=True)
+    registration = fields.Boolean(default=False)
+    heating_type = fields.Str(default=None, allow_none=True)
+    num_of_rooms = fields.Int(default=None, allow_none=True)
+    num_of_toilets = fields.Int(default=None, allow_none=True)
+    parking = fields.Boolean(default=False)
+    elevator = fields.Boolean(default=False)
+    other = fields.Boolean(default=False)
+
+    @validates_schema
+    def validate(self, data, **kwargs):
+        existing_type = TypeOfRealEstate.query.filter(TypeOfRealEstate.id == data['type_id']).first()
+        print(data['type_id'])
+        print(existing_type)
+        if not existing_type:
+            raise NotFound("Type with this id not exist")
+
+        existing_location = Location.query.filter(Location.id == data['location_id']).first()
+        if not existing_location:
+            raise NotFound("Location with this id not exist")
+
+
+class UpdateRealEstateSchema(Schema):
+    registration = fields.Bool(required=False)
+    heating_type = fields.Str(required=False)
+

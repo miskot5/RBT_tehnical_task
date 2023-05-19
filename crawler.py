@@ -59,7 +59,6 @@ def find_links_recursive(url, limit: int, visited_links=None):
         return visited_links
 
     visited_links.add(url)
-    print(url)
 
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
