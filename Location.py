@@ -8,4 +8,3 @@ class Location:
         if self.part_of_city is not None:
             part_of_city = ", " + self.part_of_city
         return self.city + part_of_city
-

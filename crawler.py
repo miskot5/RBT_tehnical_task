@@ -7,23 +7,26 @@ import Location
 pattern_elevator = r"(L|l)ift"
 pattern_kuca = r"\b(K|k)u(ć|c)a\b"
 pattern_stan = r"\b(S|s)tan\b"
-pattern_zgrada = r"(Z|z)grada"
+pattern_zgr = r"(Z|z)grada"
 pattern_garage = r"(G|g)ara(ž|z)a"
 pattern_parking = r"(P|p)arking"
 pattern_build = r"(G|g)radjevin"
 pattern_gars = r"(G|g)arsonjera"
-pattertn_sports = r"(S|s)port"
+pattert_sports = r"(S|s)port"
 pattern_lokal = r"(L|l)okal"
-pattern_other = re.compile(r'\b(?:(T|t)erasa|(L|l)o(dj|đ)a|(B|b)alkon)\b', re.IGNORECASE)
+pattern_other = re.compile(r'\b(?:terasa|lo(dj|đ)a|balkon)\b', re.IGNORECASE)
 pattern_work = r"(P|p)oslovni"
 
 baseURL = 'https://www.nekretnine.rs'
-def processing_home_page(URL):
-    resp = requests.get(URL)
+
+
+def processing_home_page(url):
+    resp = requests.get(url)
     soup = BeautifulSoup(resp.text, 'html.parser')
     links = []
-    all = soup.find_all('a', text='Pogledajte sve')
-    for href in all:
+    all_url = soup.find_all('a', text='Pogledajte sve')
+    all_href = None
+    for href in all_url:
         all_href = href['href']
 
     premium_offers = soup.select('.premium-offers-item')
@@ -32,7 +35,8 @@ def processing_home_page(URL):
         item_link = href['href'][1:]
         links.append(item_link)
 
-    return links, baseURL+all_href
+    return links, baseURL + all_href
+
 
 def finds_real_estate_links(url):
     resp = requests.get(url)
@@ -46,7 +50,8 @@ def finds_real_estate_links(url):
 
     return links
 
-def find_links_recursive(url, limit: int,visited_links=None):
+
+def find_links_recursive(url, limit: int, visited_links=None):
     if visited_links is None:
         visited_links = set()
 
@@ -60,20 +65,22 @@ def find_links_recursive(url, limit: int,visited_links=None):
     soup = BeautifulSoup(response.content, "html.parser")
     next_links = soup.find_all("a", class_="next-number")
 
-
     for next_link in next_links:
-        next_url = baseURL+next_link["href"]
-        if  len(visited_links) <= limit:
-            find_links_recursive(next_url, limit,visited_links)
+        next_url = baseURL + next_link["href"]
+        if len(visited_links) <= limit:
+            find_links_recursive(next_url, limit, visited_links)
 
     return visited_links
 
-#ako nismo u html reprezentaciji nasli odredjeni podatak, svakako zelimo da imamo podatak o tome u mapi, da bismo u bazi mogli to da cuvamo kao null
-def map_processing(key, map):
-    if key not in map:
-        map[key] = None
+
+# ako nismo u html reprezentaciji nasli odredjeni podatak, svakako zelimo da imamo podatak o tome u mapi, da bismo u
+# bazi mogli to da cuvamo kao null
+def map_processing(key, collection):
+    if key not in collection:
+        collection[key] = None
     else:
-        return map[key]
+        return collection[key]
+
 
 def string_to_int_processing(attribute_string, string):
     if attribute_string == string:
@@ -85,13 +92,14 @@ def string_to_int_processing(attribute_string, string):
         else:
             return int(result)
 
-def location_processing(name,city,map):
-    try:
-        map[name] = city
-    except KeyError:
-        map[name] = None
 
-#za izvlacenje uuid linka nekretnine
+def location_processing(name, city, collection):
+    try:
+        collection[name] = city
+    except KeyError:
+        collection[name] = None
+
+
 def extract_text_between_last_slashes(text):
     last_slash_index = text.rfind("/")
 
@@ -105,6 +113,7 @@ def extract_text_between_last_slashes(text):
 
     return None
 
+
 def real_estate_processing(link):
     external_id = extract_text_between_last_slashes(link)
     resp = requests.get(link)
@@ -117,7 +126,7 @@ def real_estate_processing(link):
     other = False
     informations = {}
     for info in infos_soup:
-        information = re.sub('\s{2,}','',info.text)
+        information = re.sub('\s{2,}', '', info.text)
         separator = ':'
 
         if separator in information:
@@ -134,50 +143,53 @@ def real_estate_processing(link):
 
     location_soup = soup.select(".stickyBox__Location")
     for loc in location_soup:
+        city = None
         try:
-            city =re.sub(r'\s+', ' ', loc.text.split(",")[0])
+            city = re.sub(r'\s+', ' ', loc.text.split(",")[0])
             part_of_city = re.sub(r'\s+', ' ', loc.text.split(",")[1])
             location = Location.Location(city, part_of_city)
         except IndexError:
             part_of_city = None
             location = Location.Location(city, part_of_city)
-        informations["Lokacija"] =  location
+        informations["Lokacija"] = location
     type_of_real_estate = 'Nepoznato'
 
-    if re.search(pattern_kuca, informations['Kategorija']):
-        type_of_real_estate = 'Kuca' + ',' + informations['Kategorija']
+    if 'Kategorija' in informations:
+        if re.search(pattern_kuca, informations['Kategorija']):
+            type_of_real_estate = 'Kuca' + ',' + informations['Kategorija']
 
-    if re.search(pattern_stan, informations['Kategorija']) or re.search(pattern_gars, informations['Kategorija']):
-        type_of_real_estate = 'Stan'+',' + informations['Kategorija']
+        if re.search(pattern_stan, informations['Kategorija']) or re.search(pattern_gars, informations['Kategorija']):
+            type_of_real_estate = 'Stan' + ',' + informations['Kategorija']
 
-    if re.search(pattern_garage, informations['Kategorija']):
-        type_of_real_estate = 'Garazno mesto'
+        if re.search(pattern_garage, informations['Kategorija']):
+            type_of_real_estate = 'Garazno mesto'
 
-    if re.search(pattern_parking, informations['Kategorija']):
-        type_of_real_estate = 'Parking mesto'
+        if re.search(pattern_parking, informations['Kategorija']):
+            type_of_real_estate = 'Parking mesto'
 
-    if re.search(pattern_build, informations['Kategorija']):
-        type_of_real_estate = 'Gradjevinsko zemljiste'
+        if re.search(pattern_build, informations['Kategorija']):
+            type_of_real_estate = 'Gradjevinsko zemljiste'
 
-    if re.search(pattertn_sports, informations['Kategorija']):
-        type_of_real_estate = 'Sportski objekat'
+        if re.search(pattert_sports, informations['Kategorija']):
+            type_of_real_estate = 'Sportski objekat'
 
-    if re.search(pattern_lokal, informations['Kategorija']) or re.search(pattern_zgrada, informations['Kategorija']):
-        type_of_real_estate = 'Komercijalni objekat'
+        if re.search(pattern_lokal, informations['Kategorija']) or re.search(pattern_zgr, informations['Kategorija']):
+            type_of_real_estate = 'Komercijalni objekat'
 
-    if re.search(pattern_work, informations['Kategorija']):
-        type_of_real_estate = 'Poslovni prostor'
-
-    offer = informations['Transakcija']
+        if re.search(pattern_work, informations['Kategorija']):
+            type_of_real_estate = 'Poslovni prostor'
+    else:
+        informations['Kategorija'] = None
+    offer = informations.get('Transakcija', None)
     location_of_real_estate = informations["Lokacija"]
     spm_string = map_processing('Kvadratura', informations)
-    spm = string_to_int_processing(spm_string,'nepoznato')
-    year_string = map_processing('Godina izgradnje',informations)
+    spm = string_to_int_processing(spm_string, 'nepoznato')
+    year_string = map_processing('Godina izgradnje', informations)
     year = string_to_int_processing(year_string, 'nepoznato')
 
     if type_of_real_estate == 'Kuca':
         area_string = map_processing('Površina zemljišta', informations)
-        area = string_to_int_processing(area_string,'nepoznato')
+        area = string_to_int_processing(area_string, 'nepoznato')
     else:
         area = None
     if type_of_real_estate != 'Kuca':
@@ -196,29 +208,19 @@ def real_estate_processing(link):
     num_of_toilets_str = map_processing('Broj kupatila', informations)
     num_of_toilets = string_to_int_processing(num_of_toilets_str, 'nepoznato')
 
-    real_estate = Real_estate.Real_Estate(external_id,type_of_real_estate, offer, location_of_real_estate, spm, year, area, storey, num_of_floors, registration, heating_type, num_of_rooms, num_of_toilets, parking, elevator, other)
+    real_estate = Real_estate.RealEstate(external_id, type_of_real_estate, offer, location_of_real_estate, spm, year,
+                                         area, storey, num_of_floors, registration, heating_type, num_of_rooms,
+                                         num_of_toilets, parking, elevator, other)
 
     return real_estate
 
-def extract_text_between_last_slashes(text):
-    last_slash_index = text.rfind("/")
 
-    if last_slash_index != -1:
-        second_last_slash_index = text.rfind("/", 0, last_slash_index)
-
-        if second_last_slash_index != -1:
-            extracted_text = text[
-                             second_last_slash_index + 1: last_slash_index]
-            return extracted_text
-
-    return None
-
-def processing_all_real_estate(URL, limit):
-    links, start_url = processing_home_page(URL)
+def processing_all_real_estate(url, limit):
+    links, start_url = processing_home_page(url)
     links_of_all_pages = find_links_recursive(start_url, int(limit))
     for page_link in links_of_all_pages:
         links.extend(finds_real_estate_links(page_link))
     real_estate_links = []
     for real_estate in links:
-        real_estate_links.append(baseURL+"/"+real_estate)
+        real_estate_links.append(baseURL + "/" + real_estate)
     return real_estate_links
